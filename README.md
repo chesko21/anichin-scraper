@@ -1,36 +1,179 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎬 DonghuaNest
 
-## Getting Started
+Platform streaming dan katalog donghua subtitle Indonesia yang dibangun menggunakan Next.js, TypeScript, dan Tailwind CSS.
 
-First, run the development server:
+![Next.js](https://img.shields.io/badge/Next.js-15-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4-38bdf8)
+![License](https://img.shields.io/badge/License-MIT-green)
+
+## ✨ Fitur
+
+* 🔍 Pencarian donghua secara real-time
+* 🔥 Daftar donghua trending
+* ⭐ Rekomendasi berdasarkan rating
+* 📚 Koleksi donghua lengkap
+* 🎭 Filter berdasarkan genre
+* 📱 Responsive untuk desktop dan mobile
+* ⚡ Infinite loading & pagination
+* 🇮🇩 Subtitle Indonesia
+* 🌙 Modern dark UI
+* 🚀 Optimasi performa Next.js
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+
+* Next.js
+* React
+* TypeScript
+* Tailwind CSS
+* Lucide React
+
+### Backend/API
+
+* Next.js API Routes
+* REST API
+
+
+---
+
+
+## 🚀 Instalasi
+
+Clone repository:
+
+```bash
+git clone https://github.com/username/donghuanest.git
+```
+
+Masuk ke folder project:
+
+```bash
+cd donghuanest
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+atau
+
+```bash
+pnpm install
+```
+
+atau
+
+```bash
+yarn install
+```
+
+Jalankan development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Buka browser:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## ⚙️ Environment Variables
 
-To learn more about Next.js, take a look at the following resources:
+Buat file:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```env
+.env.local
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Contoh:
 
-## Deploy on Vercel
+```env
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+API_BASE_URL=https://your-api-url.com
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📸 Fitur Utama
+
+### Trending Donghua
+
+Menampilkan donghua yang sedang populer berdasarkan data terbaru.
+
+### Recommendation System
+
+Menampilkan donghua dengan rating tertinggi.
+
+### Search Engine
+
+Pencarian cepat berdasarkan:
+
+* Judul
+* Genre
+* Keyword
+
+### Genre Filter
+
+Mendukung berbagai genre:
+
+* Action
+* Adventure
+* Fantasy
+* Cultivation
+* Romance
+* Martial Arts
+* Historical
+* Mystery
+* Horror
+* Sci-Fi
+* dan lainnya
+
+---
+
+## 📈 Optimasi
+
+* Lazy Loading
+* Infinite Scroll
+* Image Optimization
+* Pagination
+* Dynamic Rendering
+* Responsive Layout
+* SEO Friendly
+
+---
+
+## 🧪 Build Production
+
+```bash
+npm run build
+```
+
+Jalankan production:
+
+```bash
+npm start
+```
+
+
+
+---
+
+## 📄 License
+
+MIT License
+
+---
+
+## ❤️ Support
+
+Jika project ini bermanfaat, jangan lupa berikan ⭐ pada repository GitHub.
