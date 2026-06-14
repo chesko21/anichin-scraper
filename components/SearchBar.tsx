@@ -8,9 +8,10 @@ import Link from 'next/link';
 interface SearchBarProps {
   onSearch: (query: string) => void;
   isLoading?: boolean;
+  className?: string; // Tambahkan className
 }
 
-export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
+export default function SearchBar({ onSearch, isLoading, className }: SearchBarProps) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Array<{ title: string; slug: string }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -128,7 +129,7 @@ export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
   const trendingSearches = ['Soul Land', 'Battle Through The Heavens', 'Perfect World', 'Martial Peak', 'Against the Gods'];
 
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div ref={containerRef} className={`relative w-full ${className || ''}`}>
       <form onSubmit={handleSubmit} className="relative">
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
