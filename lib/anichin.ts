@@ -2,7 +2,7 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
-const BASE_URL = 'https://anichin.watch';
+const BASE_URL = 'https://anichin.cafe';
 const TIMEOUT = 15000;
 
 // ==================== HELPER FUNCTIONS ====================
@@ -37,14 +37,26 @@ async function fetchWithRetry(url: string, retries = 3): Promise<string> {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
           'Accept-Language': 'id-ID,id;q=0.9,en;q=0.8',
+          'Accept-Encoding': 'gzip, deflate, br',
           'Referer': BASE_URL,
+          'Origin': BASE_URL,
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'same-origin',
+          'Sec-Ch-Ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
+          'Sec-Ch-Ua-Mobile': '?0',
+          'Sec-Ch-Ua-Platform': '"Windows"',
         },
         timeout: TIMEOUT,
       });
       return response.data;
     } catch (error) {
       if (i === retries - 1) throw error;
-      await delay(1000 * (i + 1));
+      await delay(2000 * (i + 1)); 
     }
   }
   throw new Error('Failed to fetch');
