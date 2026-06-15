@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "app/api/**/route.ts": {
-      "maxDuration": 30
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",
@@ -32,29 +27,6 @@
       ]
     }
   ],
-  "rewrites": [
-    {
-      "source": "/populer",
-      "destination": "/"
-    },
-    {
-      "source": "/schedule",
-      "destination": "/"
-    }
-  ],
-  "redirects": [
-    {
-      "source": "/old-path/:path*",
-      "destination": "/:path*",
-      "permanent": true
-    }
-  ],
   "cleanUrls": true,
-  "trailingSlash": false,
-  "crons": [
-    {
-      "path": "/api/cron/refresh-cache",
-      "schedule": "0 */6 * * *"
-    }
-  ]
+  "trailingSlash": false
 }
