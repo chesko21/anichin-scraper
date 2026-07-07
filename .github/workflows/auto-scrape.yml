@@ -1,4 +1,4 @@
-name: Auto Scrape & Deploy
+name: Auto Scrape & Update Data
 
 on:
   schedule:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch: # Allow manual trigger
 
 jobs:
-  scrape-and-deploy:
+  scrape:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -22,14 +22,44 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run scraper
-        run: npm run scrape
-        timeout-minutes: 10
+      - name: Run scraper (with retry)
+        run: |
+          max_attempts=3
+          attempt=1
+          while [ $attempt -le $max_attempts ]; do
+            echo "Scrape attempt $attempt/$max_attempts..."
+            if npm run scrape; then
+              echo "Scrape succeeded!"
+              break
+            else
+              echo "Scrape failed. Waiting before retry..."
+              sleep 30
+              attempt=$((attempt + 1))
+            fi
+          done
+          
+          if [ $attempt -gt $max_attempts ]; then
+            echo "All scrape attempts failed."
+            # Fail the job if no data exists yet
+            if [ ! -f public/data/all.json ]; then
+              echo "No existing data found. Failing."
+              exit 1
+            else
+              echo "Using existing data files."
+            fi
+          fi
+        timeout-minutes: 15
 
-      - name: Commit scraped data
+      - name: Commit & push scraped data
         run: |
           git config --global user.name 'Auto Scraper Bot'
           git config --global user.email 'bot@anichin-scraper.vercel.app'
           git add public/data/
-          git diff --quiet && git diff --staged --quiet || git commit -m "chore: auto-update data $(date +'%Y-%m-%d %H:%M')"
-          git push
+          
+          # Only commit if there are changes
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore: auto-update data $(date +'%Y-%m-%d %H:%M')"
+            git push
+          fi
