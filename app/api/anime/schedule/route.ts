@@ -1,45 +1,47 @@
 // app/api/anime/schedule/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { getSchedule } from '@/lib/anichin';
-
-// Timeout wrapper for serverless functions
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error(`Request timeout after ${ms}ms`)), ms)
-    ),
-  ]);
-}
+import fs from 'fs';
+import path from 'path';
 
 export async function GET(request: NextRequest) {
   try {
-    const schedule = await withTimeout(getSchedule(), 20000);
+    const filePath = path.join(process.cwd(), 'public', 'data', 'schedule.json');
+    
+    if (!fs.existsSync(filePath)) {
+      return NextResponse.json({
+        success: false,
+        error: 'Data not available. Run build first.',
+        data: {
+          monday: [], tuesday: [], wednesday: [], thursday: [],
+          friday: [], saturday: [], sunday: []
+        }
+      }, { status: 503 });
+    }
+
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const json = JSON.parse(raw);
+    const { updatedAt, ...schedule } = json;
     
     return NextResponse.json({
       success: true,
       data: schedule,
     }, {
       headers: {
-        'Cache-Control': 's-maxage=180, stale-while-revalidate=300',
+        'Cache-Control': 's-maxage=3600, stale-while-revalidate=7200',
       },
     });
   } catch (error: any) {
     console.error('Get schedule API error:', error);
-    
-    const errorMessage = error?.message || 'Failed to fetch schedule';
-    const statusCode = error?.message?.includes('timeout') ? 504 : 500;
-    
     return NextResponse.json(
       { 
         success: false, 
-        error: errorMessage,
+        error: error?.message || 'Failed to load schedule',
         data: {
           monday: [], tuesday: [], wednesday: [], thursday: [],
           friday: [], saturday: [], sunday: []
         }
       },
-      { status: statusCode }
+      { status: 500 }
     );
   }
 }

@@ -1,0 +1,35 @@
+name: Auto Scrape & Deploy
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  scrape-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run scraper
+        run: npm run scrape
+        timeout-minutes: 10
+
+      - name: Commit scraped data
+        run: |
+          git config --global user.name 'Auto Scraper Bot'
+          git config --global user.email 'bot@anichin-scraper.vercel.app'
+          git add public/data/
+          git diff --quiet && git diff --staged --quiet || git commit -m "chore: auto-update data $(date +'%Y-%m-%d %H:%M')"
+          git push
