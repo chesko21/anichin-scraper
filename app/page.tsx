@@ -104,6 +104,21 @@ function GenreTag({ label, onClick, active }: { label: string; onClick: () => vo
   );
 }
 
+// Helper function to fetch with error handling
+async function fetchWithFallback(url: string): Promise<any> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.warn(`[fetchWithFallback] ${url} failed with status ${response.status}`);
+      return { success: false, data: { items: [] } };
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`[fetchWithFallback] Error fetching ${url}:`, error);
+    return { success: false, data: { items: [] } };
+  }
+}
+
 export default function Home() {
   const [searchResults, setSearchResults] = useState<AnimeSearchResult[]>([]);
   const [allDonghua, setAllDonghua] = useState<AnimeSearchResult[]>([]);
@@ -112,7 +127,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [page, setPage] = useState(9);
+  const [page, setPage] = useState(2);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'trending' | 'recommendations'>('all');
@@ -134,25 +149,27 @@ export default function Home() {
         (a.image.startsWith('http') || a.image.startsWith('https') || a.image.startsWith('//'))
     );
 
+  // Sequential fetch to avoid overwhelming serverless functions
+  const fetchPageSequentially = async (pageNum: number): Promise<AnimeSearchResult[]> => {
+    const data = await fetchWithFallback(`/api/anime/all?page=${pageNum}&limit=60`);
+    if (data.success && data.data?.items) {
+      return filterValid(data.data.items);
+    }
+    return [];
+  };
+
   useEffect(() => {
     const loadInitialData = async () => {
       setInitialLoading(true);
       try {
-        const pagesToFetch = [1, 2, 3, 4, 5, 6, 7, 8];
-        const allPromises = pagesToFetch.map(p => 
-          fetch(`/api/anime/all?page=${p}&limit=60`)
-        );
-        
-        const responses = await Promise.all(allPromises);
+        // Fetch only 2 pages initially to reduce load
+        const pagesToFetch = [1, 2];
         const allItems: AnimeSearchResult[] = [];
         
-        for (const res of responses) {
-          if (res.ok) {
-            const data = await res.json();
-            if (data.success && data.data) {
-              allItems.push(...filterValid(data.data.items));
-            }
-          }
+        // Sequential fetch to avoid timeout
+        for (const p of pagesToFetch) {
+          const items = await fetchPageSequentially(p);
+          allItems.push(...items);
         }
         
         const seen = new Set<string>();
@@ -161,29 +178,25 @@ export default function Home() {
           seen.add(item.slug);
           return true;
         });
-        
+
         console.log(`[Home] Loaded ${unique.length} unique donghua from ${pagesToFetch.length} requests`);
         setAllDonghua(unique);
-        setHasMore(unique.length >= 480);
-        setPage(9);
+        setHasMore(unique.length >= 120);
+        setPage(3);
 
+        // Fetch trending
         try {
-          const trendingRes = await fetch('/api/anime/trending');
-          if (trendingRes.ok) {
-            const trendingData = await trendingRes.json();
-            if (trendingData.success && trendingData.data?.length > 0) {
-              setTrendingDonghua(filterValid(trendingData.data));
-            }
+          const trendingData = await fetchWithFallback('/api/anime/trending');
+          if (trendingData.success && trendingData.data?.length > 0) {
+            setTrendingDonghua(filterValid(trendingData.data));
           }
         } catch (err) { console.error('Trending error:', err); }
 
+        // Fetch recommendations
         try {
-          const recRes = await fetch('/api/anime/recommendations?limit=20');
-          if (recRes.ok) {
-            const recData = await recRes.json();
-            if (recData.success && recData.data) {
-              setRecommendations(filterValid(recData.data));
-            }
+          const recData = await fetchWithFallback('/api/anime/recommendations?limit=20');
+          if (recData.success && recData.data) {
+            setRecommendations(filterValid(recData.data));
           }
         } catch (err) { console.error('Recommendations error:', err); }
       } catch (error) {
@@ -219,33 +232,26 @@ export default function Home() {
     if (loadingMore || !hasMore || isSearching) return;
     setLoadingMore(true);
     try {
-      const pagesToFetch = [page, page + 1, page + 2, page + 3];
-      const allPromises = pagesToFetch.map(p => 
-        fetch(`/api/anime/all?page=${p}&limit=60`)
-      );
-      
-      const responses = await Promise.all(allPromises);
+      // Fetch 2 pages at a time instead of 4
+      const pagesToFetch = [page, page + 1];
       const allNewItems: AnimeSearchResult[] = [];
       let stillHasMore = false;
       
-      for (const res of responses) {
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.data) {
-            allNewItems.push(...filterValid(data.data.items));
-            if (data.data.hasMore) stillHasMore = true;
-          }
+      for (const p of pagesToFetch) {
+        const data = await fetchWithFallback(`/api/anime/all?page=${p}&limit=60`);
+        if (data.success && data.data?.items) {
+          allNewItems.push(...filterValid(data.data.items));
+          if (data.data.hasMore) stillHasMore = true;
         }
       }
       
-      const newItems = allNewItems;
       setAllDonghua((prev) => {
         const existingSlugs = new Set(prev.map((item) => item.slug));
-        const uniqueNewItems = newItems.filter((item) => !existingSlugs.has(item.slug));
+        const uniqueNewItems = allNewItems.filter((item) => !existingSlugs.has(item.slug));
         return [...prev, ...uniqueNewItems];
       });
-      setHasMore(stillHasMore && newItems.length >= 30);
-      setPage((prev) => prev + 4);
+      setHasMore(stillHasMore && allNewItems.length >= 60);
+      setPage((prev) => prev + 2);
     } catch (error) {
       console.error('Failed to load more:', error);
     } finally {
@@ -404,7 +410,7 @@ export default function Home() {
             <div>
               <h2 className="text-2xl sm:text-3xl font-bold flex items-center gap-3 flex-wrap">
                 <span className="text-gray-400">Hasil Pencarian</span>
-                {searchQuery && <span className="text-white font-normal truncate max-w-[200px] sm:max-w-xs">&quot;{searchQuery}&quot;</span>}
+                {searchQuery && <span className="text-white font-normal truncate max-w-[200px] sm:max-w-xs">"{searchQuery}"</span>}
                 <span className="text-sm font-normal px-3 py-1 rounded-full bg-white/5 text-gray-400 border border-white/5">{searchResults.length} hasil</span>
               </h2>
             </div>

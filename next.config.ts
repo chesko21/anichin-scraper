@@ -36,6 +36,8 @@ const nextConfig: NextConfig = {
     ],
     unoptimized: true,
   },
+  // Allow development from any origin (fixes HMR WebSocket issues)
+  allowedDevOrigins: ['169.254.83.107', 'localhost', '127.0.0.1'],
 };
 
 export default nextConfig;

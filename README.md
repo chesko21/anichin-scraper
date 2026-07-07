@@ -37,9 +37,7 @@ Platform streaming dan katalog donghua subtitle Indonesia yang dibangun mengguna
 * Next.js API Routes
 * REST API
 
-
 ---
-
 
 ## 🚀 Instalasi
 
@@ -152,6 +150,40 @@ Mendukung berbagai genre:
 
 ---
 
+## 🚀 Deployment ke Vercel
+
+### Masalah Umum & Solusi
+
+#### ❌ Data tidak tampil di production
+
+**Penyebab:**
+1. **Cache in-memory tidak persisten** - Vercel serverless functions bersifat stateless, cache Map akan reset setiap request
+2. **Request paralel terlalu banyak** - 8 request sekaligus bisa trigger timeout
+3. **Timeout Vercel** - Batas waktu eksekusi function (10-60 detik)
+4. **Keterbatasan jaringan** - Vercel mungkin membatasi koneksi ke domain target
+
+**Solusi yang sudah diterapkan:**
+- ✅ Timeout wrapper di semua API routes (25 detik)
+- ✅ Sequential fetch di homepage (bukan paralel)
+- ✅ Error handling yang lebih informatif
+- ✅ Fallback data ketika API gagal
+
+#### 🔧 Rekomendasi Deployment
+
+1. **Gunakan Vercel Hobby/Pro** - Dapatkan batas timeout lebih tinggi
+2. **Tambahkan caching eksternal** - Redis/Memcached untuk cache persisten
+3. **Kurangi jumlah halaman awal** - Hanya fetch 2 halaman pertama
+4. **Monitor logs** - Cek Vercel Functions logs untuk debug
+
+#### 📊 Monitoring
+
+Untuk memantau performa, buka Vercel dashboard dan cek:
+- Function execution time
+- Error rate
+- Memory usage
+
+---
+
 ## 🧪 Build Production
 
 ```bash
@@ -163,8 +195,6 @@ Jalankan production:
 ```bash
 npm start
 ```
-
-
 
 ---
 
