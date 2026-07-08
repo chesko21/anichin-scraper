@@ -436,7 +436,7 @@ export async function getSeriesDetail(slug: string): Promise<SeriesDetail | null
 
     const episodes: SeriesDetail['episodes'] = [];
     const episodeSelectors = [
-      '.episodelist ul li a', '.eplist li a', '.eps-list a',
+      '.eplister a', '.episodelist ul li a', '.eplist li a', '.eps-list a',
       '.list-episode li a', '.lstepsi a', '.bxcl ul li a',
       '.episode-list a', '.all-episodes a',
     ];
@@ -448,8 +448,11 @@ export async function getSeriesDetail(slug: string): Promise<SeriesDetail | null
         found.each((index, element) => {
           const episodeUrl = $(element).attr('href') || '';
           if (episodeUrl && !episodes.some(e => e.url === episodeUrl)) {
+            let episodeNumber = $(element).find('.epl-num, .eph-num').first().text().trim() || '';
             let episodeTitle = $(element).find('.episode, .eps, .epno, .title, .epl-title').first().text().trim() || $(element).text().trim();
-            let episodeNumber = episodeTitle.match(/[Ee]p(?:isode)?\s*(\d+)/i)?.[1] || episodeTitle.match(/\d+/)?.[0] || episodeUrl.match(/episode-(\d+)/i)?.[1] || episodeUrl.match(/-(\d+)(?:\/|-|$)/)?.[1] || String(index + 1);
+            if (!episodeNumber) {
+              episodeNumber = episodeTitle.match(/[Ee]p(?:isode)?\s*(\d+)/i)?.[1] || episodeTitle.match(/\d+/)?.[0] || episodeUrl.match(/episode-(\d+)/i)?.[1] || episodeUrl.match(/-(\d+)(?:\/|-|$)/)?.[1] || String(index + 1);
+            }
             episodeTitle = episodeTitle.replace(/^\s*episode\s*\d+\s*[:-]?\s*/i, '').replace(/\s*subtitle indonesia\s*$/i, '').trim() || `Episode ${episodeNumber}`;
             episodes.push({ id: index + 1, title: episodeTitle, slug: episodeUrl.split('/').filter(Boolean).pop() || '', episodeNumber, url: episodeUrl.startsWith('http') ? episodeUrl : `${BASE_URL}${episodeUrl}` });
           }
