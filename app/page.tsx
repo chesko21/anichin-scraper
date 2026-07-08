@@ -446,14 +446,24 @@ export default function Home() {
                   <div className="lg:col-span-2">
                     <SectionHeader icon={<Flame className="w-5 h-5 text-gray-400" />} title="Trending Sekarang" subtitle="Donghua paling banyak ditonton minggu ini" href="/populer" />
                     {initialLoading ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">{[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}</div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">{[...Array(9)].map((_, i) => <SkeletonCard key={i} />)}</div>
                     ) : (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                        {trendingDonghua.slice(0, 6).map((anime, index) => (
-                          <div key={anime.slug || index} className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${index * 50}ms` }}>
-                            <AnimeCard anime={anime} rank={index + 1} priority={index < 6} />
+                        {trendingDonghua.slice(0, 9).map((anime, index) => (
+                          <div key={anime.slug || index} className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${index * 40}ms` }}>
+                            <AnimeCard anime={anime} rank={index + 1} priority={index < 9} />
                           </div>
                         ))}
+                        {trendingDonghua.length > 9 && (
+                          <div className="col-span-2 sm:col-span-3 flex justify-center">
+                            <a
+                              href="/populer"
+                              className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-all duration-300 px-4 py-2 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/10"
+                            >
+                              Lihat Semua Trending →
+                            </a>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -586,7 +596,7 @@ export default function Home() {
                 {!hasMore && activeFilter === 'all' && allDonghua.length > 0 && (
                   <div className="flex justify-center py-10 animate-in fade-in duration-500">
                     <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white/[0.02] border border-white/5">
-                      <span className="text-lg">🎉</span>
+                      
                       <span className="text-gray-400 text-sm">Semua {allDonghua.length} donghua telah dimuat!</span>
                     </div>
                   </div>
@@ -597,63 +607,62 @@ export default function Home() {
             )}
           </section>
 
-          <section className="w-full px-4 sm:px-6 lg:px-8 py-12 sm:py-20 pb-16 sm:pb-24">
-            <div className="relative rounded-3xl overflow-hidden p-8 sm:p-12 bg-white/[0.01] border border-white/5 backdrop-blur-sm">
+          <section className="w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-14 pb-12 sm:pb-16">
+            <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden p-5 sm:p-8 bg-white/[0.01] border border-white/5 backdrop-blur-sm">
               <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full blur-3xl pointer-events-none bg-indigo-500/5" />
               <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full blur-3xl pointer-events-none bg-purple-500/5" />
 
               <div className="relative z-10">
-                <div className="text-center mb-10 sm:mb-16">
-                  <div className="text-5xl sm:text-6xl mb-6">✨</div>
-                  <h3 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 tracking-tight">
+                <div className="text-center mb-6 sm:mb-10">
+                  <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 tracking-tight">
                     <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                       Kenapa DonghuaNest?
                     </span>
                   </h3>
-                  <p className="text-gray-500 text-base sm:text-lg max-w-lg mx-auto">Platform streaming donghua terbaik dengan pengalaman menonton tanpa batas</p>
+                  <p className="text-gray-500 text-xs sm:text-sm max-w-lg mx-auto">Platform streaming donghua terbaik dengan pengalaman menonton tanpa batas</p>
                 </div>
 
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 mb-12">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-8">
                   {[
-                    { icon: Tv, title: 'Koleksi Lengkap', desc: 'Ribuan episode dari berbagai genre donghua terbaru dan klasik' },
-                    { icon: Sparkles, title: 'Subtitle Indonesia', desc: 'Semua donghua dilengkapi subtitle bahasa Indonesia berkualitas' },
-                    { icon: Smartphone, title: 'Responsive Design', desc: 'Tonton dengan nyaman di smartphone, tablet, atau desktop' },
-                    { icon: Clock, title: 'Update Harian', desc: 'Episode baru ditambahkan setiap hari, selalu fresh!' },
+                    { icon: Tv, title: 'Koleksi Lengkap', desc: 'Ribuan episode dari berbagai genre' },
+                    { icon: Sparkles, title: 'Subtitle Indonesia', desc: 'Subtitle bahasa Indonesia berkualitas' },
+                    { icon: Smartphone, title: 'Responsive', desc: 'Nyaman di HP, tablet, atau desktop' },
+                    { icon: Clock, title: 'Update Harian', desc: 'Episode baru setiap hari, selalu fresh' },
                   ].map((feature) => {
                     const Icon = feature.icon;
                     return (
-                      <div key={feature.title} className="p-4 sm:p-6 rounded-2xl text-center group transition-all duration-500 hover:bg-white/[0.02] border border-transparent hover:border-white/5">
-                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 transition-all duration-500 group-hover:scale-110 bg-white/5 border border-white/5">
-                          <Icon className="w-6 h-6 sm:w-7 sm:h-7 text-gray-400 group-hover:text-white transition-colors duration-500" />
+                      <div key={feature.title} className="p-3 sm:p-4 rounded-xl sm:rounded-2xl text-center group transition-all duration-300 hover:bg-white/[0.02] border border-transparent hover:border-white/5">
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center mx-auto mb-2 transition-all duration-300 group-hover:scale-110 bg-white/5 border border-white/5">
+                          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-hover:text-white transition-colors duration-300" />
                         </div>
-                        <h4 className="text-sm sm:text-base font-semibold text-white mb-1.5 sm:mb-2">{feature.title}</h4>
-                        <p className="text-xs sm:text-sm text-gray-500 leading-relaxed">{feature.desc}</p>
+                        <h4 className="text-xs sm:text-sm font-semibold text-white mb-0.5">{feature.title}</h4>
+                        <p className="text-[10px] sm:text-xs text-gray-500 leading-relaxed">{feature.desc}</p>
                       </div>
                     );
                   })}
                 </div>
 
-                <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mb-10">
+                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
                   {[
-                    { icon: Shield, text: 'Server aktif 24/7' },
-                    { icon: Star, text: 'Tanpa iklan berlebihan' },
-                    { icon: Gift, text: '100% Gratis selamanya' },
+                    { icon: Shield, text: 'Server 24/7' },
+                    { icon: Star, text: 'Tanpa iklan' },
+                    { icon: Gift, text: 'Gratis selamanya' },
                   ].map((stat) => {
                     const Icon = stat.icon;
                     return (
-                      <div key={stat.text} className="flex items-center gap-2 text-xs sm:text-sm text-gray-400 px-3 sm:px-4 py-2 rounded-full bg-white/[0.02] border border-white/5">
-                        <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500" /><span>{stat.text}</span>
+                      <div key={stat.text} className="flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-400 px-2.5 sm:px-3 py-1.5 rounded-full bg-white/[0.02] border border-white/5">
+                        <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-500" /><span>{stat.text}</span>
                       </div>
                     );
                   })}
                 </div>
 
-                <div className="flex flex-wrap gap-3 sm:gap-4 justify-center">
-                  <a href="/populer" className="px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium text-sm transition-all duration-300 bg-white text-black hover:bg-gray-200 inline-flex items-center gap-2">
-                    <Flame className="w-4 h-4" /> Mulai Nonton Sekarang
+                <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
+                  <a href="/populer" className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-medium text-xs sm:text-sm transition-all duration-300 bg-white text-black hover:bg-gray-200 inline-flex items-center gap-1.5">
+                    <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Mulai Nonton
                   </a>
-                  <button onClick={() => handleSearch('soul land')} className="px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl font-medium text-sm transition-all duration-300 bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 inline-flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4" /> Cari Donghua Populer
+                  <button onClick={() => handleSearch('soul land')} className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-medium text-xs sm:text-sm transition-all duration-300 bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 inline-flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Cari Populer
                   </button>
                 </div>
               </div>

@@ -33,8 +33,8 @@ function getRankStyle(r: number): string {
 function PlaceholderImage({ title }: { title: string }) {
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-white/[0.02] p-2">
-      <span className="text-lg md:text-xl mb-1 opacity-40">🎬</span>
-      <span className="text-gray-600 text-[9px] md:text-[10px] text-center line-clamp-2 px-1 leading-tight">
+      <span className="text-base sm:text-lg md:text-xl mb-1 opacity-40">🎬</span>
+      <span className="text-gray-600 text-[8px] sm:text-[9px] md:text-[10px] text-center line-clamp-2 px-1 leading-tight">
         {title}
       </span>
     </div>
@@ -43,8 +43,8 @@ function PlaceholderImage({ title }: { title: string }) {
 
 function RankBadge({ rank, size }: { rank: number; size?: string }) {
   const sizeClasses = size === 'small' 
-    ? 'top-1.5 left-1.5 w-5 h-5 rounded-md text-[9px]' 
-    : 'top-2 left-2 w-6 h-6 md:w-7 md:h-7 rounded-md text-[10px] md:text-[11px]';
+    ? 'top-0.5 left-0.5 sm:top-1 sm:left-1 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded text-[6px] sm:text-[7px]' 
+    : 'top-1.5 left-1.5 sm:top-2 sm:left-2 w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded sm:rounded-md text-[9px] sm:text-[10px] md:text-[11px]';
 
   return (
     <div
@@ -57,20 +57,21 @@ function RankBadge({ rank, size }: { rank: number; size?: string }) {
   );
 }
 
-function EpisodeBadge({ episode, isOngoing }: { episode: string; isOngoing: boolean }) {
+function EpisodeBadge({ episode, isOngoing, size }: { episode: string; isOngoing: boolean; size?: string }) {
+  const isSmall = size === 'small';
   if (isOngoing) {
     return (
-      <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md text-[10px] md:text-[11px] font-medium z-10 flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 backdrop-blur-md">
-        <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-        Ongoing
+      <div className={`absolute top-1 right-1 sm:top-2 sm:right-2 ${isSmall ? 'px-1 py-0.5' : 'px-1.5 py-0.5'} rounded text-[7px] sm:text-[10px] md:text-[11px] font-medium z-10 flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 backdrop-blur-md`}>
+        <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-emerald-400 rounded-full"></span>
+        {isSmall ? 'ON' : 'Ongoing'}
       </div>
     );
   }
 
   if (episode && episode !== 'N/A') {
     return (
-      <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md text-[10px] md:text-[11px] font-medium z-10 bg-black/60 border border-white/5 text-gray-300 backdrop-blur-md">
-        EP {episode}
+      <div className={`absolute top-1 right-1 sm:top-2 sm:right-2 ${isSmall ? 'px-1 py-0.5' : 'px-1.5 py-0.5'} rounded text-[7px] sm:text-[10px] md:text-[11px] font-medium z-10 bg-black/60 border border-white/5 text-gray-300 backdrop-blur-md`}>
+        {isSmall ? `EP${episode}` : `EP ${episode}`}
       </div>
     );
   }
@@ -78,7 +79,8 @@ function EpisodeBadge({ episode, isOngoing }: { episode: string; isOngoing: bool
   return null;
 }
 
-function PlayOverlay({ isHovered }: { isHovered: boolean }) {
+function PlayOverlay({ isHovered, size }: { isHovered: boolean; size?: string }) {
+  const isSmall = size === 'small';
   return (
     <div
       className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
@@ -89,7 +91,7 @@ function PlayOverlay({ isHovered }: { isHovered: boolean }) {
       }}
     >
       <div
-        className="w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center mb-1.5"
+        className={`${isSmall ? 'w-5 h-5 sm:w-8 sm:h-8' : 'w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10'} rounded-full flex items-center justify-center ${isSmall ? '' : 'mb-1.5'}`}
         style={{
           background: 'rgba(255, 255, 255, 0.15)',
           backdropFilter: 'blur(8px)',
@@ -98,9 +100,9 @@ function PlayOverlay({ isHovered }: { isHovered: boolean }) {
           transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
         }}
       >
-        <span className="text-white text-base md:text-lg ml-0.5">▶</span>
+        <span className={`text-white ${isSmall ? 'text-[9px] sm:text-sm ml-0.5' : 'text-sm sm:text-base md:text-lg ml-0.5'}`}>▶</span>
       </div>
-      <span className="text-white text-[10px] md:text-xs font-medium tracking-wide">Tonton</span>
+      {!isSmall && <span className="text-white text-[9px] sm:text-[10px] md:text-xs font-medium tracking-wide hidden sm:block">Tonton</span>}
     </div>
   );
 }
@@ -127,21 +129,21 @@ export default function AnimeCard({ anime, rank, variant = 'default', priority =
 
   const sizes = {
     small: {
-      imageSize: '(max-width: 480px) 25vw, (max-width: 768px) 16vw, 12vw',
-      titleSize: 'text-[10px] md:text-[11px]',
-      titleMt: 'mt-1.5',
+      imageSize: '(max-width: 400px) 45vw, (max-width: 640px) 30vw, (max-width: 768px) 20vw, (max-width: 1024px) 14vw, 10vw',
+      titleSize: 'text-[11px] sm:text-[12px] md:text-[13px]',
+      titleMt: 'mt-1 sm:mt-1.5',
       badge: 'small',
     },
     medium: {
       imageSize: '(max-width: 480px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw',
-      titleSize: 'text-[12px] md:text-sm',
-      titleMt: 'mt-2 md:mt-2.5',
+      titleSize: 'text-[13px] sm:text-sm md:text-base',
+      titleMt: 'mt-1.5 sm:mt-2 md:mt-2.5',
       badge: 'medium',
     },
     large: {
       imageSize: '(max-width: 480px) 100vw, (max-width: 768px) 50vw, 33vw',
-      titleSize: 'text-sm md:text-base',
-      titleMt: 'mt-2.5 md:mt-3',
+      titleSize: 'text-base sm:text-lg',
+      titleMt: 'mt-2 sm:mt-2.5 md:mt-3',
       badge: 'large',
     },
   };
@@ -152,11 +154,11 @@ export default function AnimeCard({ anime, rank, variant = 'default', priority =
     return (
       <Link href={`/anime/${anime.slug}`} className="block">
         <div
-          className="flex gap-3 p-3 rounded-xl bg-white/[0.01] border border-white/5 cursor-pointer transition-all duration-300 hover:bg-white/[0.03] hover:border-white/10"
+          className="flex gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl bg-white/[0.01] border border-white/5 cursor-pointer transition-all duration-300 hover:bg-white/[0.03] hover:border-white/10"
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
-          <div className="relative w-12 sm:w-14 flex-shrink-0 rounded-lg overflow-hidden bg-white/5" style={{ aspectRatio: '2/3' }}>
+          <div className="relative w-10 sm:w-12 md:w-14 flex-shrink-0 rounded-lg overflow-hidden bg-white/5" style={{ aspectRatio: '2/3' }}>
             {hasImage ? (
               <Image
                 src={imageUrl}
@@ -174,7 +176,7 @@ export default function AnimeCard({ anime, rank, variant = 'default', priority =
               </div>
             )}
             {rank && rank <= 3 && (
-              <div className={`absolute top-1 left-1 w-4 h-4 rounded-md flex items-center justify-center text-[9px] font-bold ${getRankStyle(rank)}`}>
+              <div className={`absolute top-1 left-1 w-3 h-3 sm:w-4 sm:h-4 rounded flex items-center justify-center text-[7px] sm:text-[9px] font-bold ${getRankStyle(rank)}`}>
                 {rank}
               </div>
             )}
@@ -182,7 +184,7 @@ export default function AnimeCard({ anime, rank, variant = 'default', priority =
 
           <div className="flex-1 min-w-0 flex flex-col justify-center">
             <h3
-              className={`text-sm font-medium line-clamp-2 leading-snug transition-colors duration-200 ${
+              className={`text-xs sm:text-sm font-medium line-clamp-2 leading-snug transition-colors duration-200 ${
                 isHovered ? 'text-white' : 'text-gray-300'
               }`}
             >
@@ -219,7 +221,7 @@ export default function AnimeCard({ anime, rank, variant = 'default', priority =
           className="relative overflow-hidden bg-white/[0.02]"
           style={{
             aspectRatio: '2/3',
-            borderRadius: size === 'small' ? '0.5rem' : '0.75rem',
+            borderRadius: size === 'small' ? '0.375rem' : '0.75rem',
             boxShadow: isHovered
               ? '0 16px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1)'
               : '0 2px 8px rgba(0, 0, 0, 0.2)',
@@ -245,11 +247,11 @@ export default function AnimeCard({ anime, rank, variant = 'default', priority =
 
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
 
-          <PlayOverlay isHovered={isHovered} />
+          <PlayOverlay isHovered={isHovered} size={size} />
 
           {rank !== undefined && <RankBadge rank={rank} size={currentSize.badge} />}
 
-          <EpisodeBadge episode={anime.latestEpisode || ''} isOngoing={isOngoing} />
+          <EpisodeBadge episode={anime.latestEpisode || ''} isOngoing={isOngoing} size={size} />
         </div>
 
         <div className={`${currentSize.titleMt} px-0.5`}>

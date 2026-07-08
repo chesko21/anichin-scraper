@@ -150,22 +150,22 @@ export default function AnimeDetailPage() {
   return (
     <div className="min-h-screen bg-[#08080d] pt-20">
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8 mb-8">
-          <div className="w-full lg:w-1/3 xl:w-1/4">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 mb-8">
+          <div className="w-full max-w-[220px] lg:max-w-[200px] xl:max-w-[220px] mx-auto lg:mx-0">
             <div className="sticky top-24">
-              <div className="relative rounded-2xl overflow-hidden aspect-[2/3] bg-white/[0.02] border border-white/5">
+              <div className="relative rounded-xl overflow-hidden aspect-[2/3] bg-white/[0.02] border border-white/5 shadow-lg shadow-black/20">
                 {anime.image && anime.image !== '/placeholder.jpg' ? (
                   <Image
                     src={anime.image}
                     alt={anime.title}
                     fill
                     className="object-cover"
-                    sizes="(max-width: 768px) 100vw, 25vw"
+                    sizes="220px"
                     unoptimized={true}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-white/[0.02]">
-                    <span className="text-gray-600">No Image</span>
+                    <span className="text-gray-600 text-sm">No Image</span>
                   </div>
                 )}
               </div>

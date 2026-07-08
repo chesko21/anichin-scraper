@@ -43,66 +43,16 @@ function getGenresFromIndex(index: number): string[] {
   return genreSets[index % genreSets.length];
 }
 
-function getMedalEmoji(rank: number): string {
-  return `${rank}`;
-}
-
-function TopThreeCard({ anime, rank }: { anime: PopularAnime; rank: number }) {
-  return (
-    <a
-      href={`/anime/${anime.slug}`}
-      className="relative group cursor-pointer block"
-    >
-      <div className="relative overflow-hidden rounded-2xl aspect-[2/3] mb-3 bg-white/[0.02] border border-white/5">
-        <img
-          src={anime.image}
-          alt={anime.title}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          loading={rank === 1 ? 'eager' : 'lazy'}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-
-        <div className="absolute top-3 left-3">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-bold backdrop-blur-md bg-white/10 border border-white/10 text-white">
-            {getMedalEmoji(rank)}
-          </div>
-        </div>
-
-        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
-          <h3 className="text-sm sm:text-base font-medium text-white truncate mb-1">
-            {anime.title}
-          </h3>
-          <div className="flex items-center gap-3 text-[11px]">
-            <span className="flex items-center gap-1 text-gray-400">
-              <span className="opacity-60">👁</span>
-              <span>{anime.views}</span>
-            </span>
-            <span className="w-1 h-1 rounded-full bg-white/20"></span>
-            <span className="flex items-center gap-1 text-gray-400">
-              <span className="opacity-60">★</span>
-              <span>{anime.rating}</span>
-            </span>
-          </div>
-        </div>
-      </div>
-    </a>
-  );
-}
-
 function SkeletonLoader() {
   return (
-    <div className="animate-pulse space-y-6">
-      <div className="h-10 bg-white/5 rounded-xl w-64 mb-2"></div>
-      <div className="h-4 bg-white/5 rounded-lg w-96 mb-8"></div>
-      <div className="grid gap-4">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="rounded-xl bg-white/[0.01] border border-white/5 p-4 flex gap-4">
-            <div className="w-10 h-10 bg-white/5 rounded-full"></div>
-            <div className="w-16 aspect-[2/3] bg-white/5 rounded-lg"></div>
-            <div className="flex-1 space-y-2">
-              <div className="h-4 bg-white/5 rounded-lg w-3/4"></div>
-              <div className="h-3 bg-white/5 rounded-lg w-1/2"></div>
-            </div>
+    <div className="animate-pulse space-y-4">
+      <div className="h-7 bg-white/5 rounded-lg w-40 mb-1"></div>
+      <div className="h-2.5 bg-white/5 rounded-lg w-56 mb-6"></div>
+      <div className="grid grid-cols-3 max-[400px]:grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 2xl:grid-cols-10 gap-1.5 sm:gap-2.5">
+        {[...Array(20)].map((_, i) => (
+          <div key={i} className="space-y-1">
+            <div className="bg-white/5 rounded-lg aspect-[2/3]"></div>
+            <div className="bg-white/5 h-2 rounded w-3/4"></div>
           </div>
         ))}
       </div>
@@ -130,11 +80,11 @@ function EmptyState() {
 
 function StatCard({ value, label }: { value: string; label: string }) {
   return (
-    <div className="p-4 rounded-xl text-center bg-white/[0.02] border border-white/5">
-      <div className="text-xl sm:text-2xl font-bold mb-1 text-white">
+    <div className="p-2.5 sm:p-3 rounded-xl text-center bg-white/[0.02] border border-white/5">
+      <div className="text-sm sm:text-base font-bold mb-0.5 text-white">
         {value}
       </div>
-      <div className="text-[11px] text-gray-500">{label}</div>
+      <div className="text-[9px] sm:text-[10px] text-gray-500">{label}</div>
     </div>
   );
 }
@@ -153,23 +103,59 @@ export default function PopulerPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'rank' | 'views' | 'rating'>('rank');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 50;
 
   useEffect(() => {
     const fetchPopular = async () => {
       setLoading(true);
       try {
-        const response = await fetch('/api/anime/trending');
-        const data = await response.json();
-        if (data.success && data.data) {
-          const enrichedData: PopularAnime[] = data.data.map((item: AnimeSearchResult, index: number) => ({
-            ...item,
-            rank: index + 1,
-            views: getViewsFromIndex(index),
-            rating: getRatingFromIndex(index),
-            genre: getGenresFromIndex(index),
-          }));
-          setAnimeList(enrichedData);
+        // Fetch trending + all data for more items
+        const [trendingRes, allRes] = await Promise.all([
+          fetch('/api/anime/trending'),
+          fetch('/api/anime/all?page=1&limit=100'),
+        ]);
+        
+        const trendingData = await trendingRes.json();
+        const allData = await allRes.json();
+        
+        const seenSlugs = new Set<string>();
+        const combined: PopularAnime[] = [];
+        let rank = 1;
+
+        // Add trending first (they get top ranks)
+        if (trendingData.success && trendingData.data) {
+          for (const item of trendingData.data) {
+            if (item.title && item.title.length >= 2 && !seenSlugs.has(item.slug)) {
+              seenSlugs.add(item.slug);
+              combined.push({
+                ...item,
+                rank: rank++,
+                views: getViewsFromIndex(combined.length),
+                rating: getRatingFromIndex(combined.length),
+                genre: getGenresFromIndex(combined.length),
+              });
+            }
+          }
         }
+
+        // Add all donghua to fill up the list
+        if (allData.success && allData.data?.items) {
+          for (const item of allData.data.items) {
+            if (!seenSlugs.has(item.slug) && item.title && item.title.length >= 2) {
+              seenSlugs.add(item.slug);
+              combined.push({
+                ...item,
+                rank: rank++,
+                views: getViewsFromIndex(combined.length),
+                rating: getRatingFromIndex(combined.length),
+                genre: getGenresFromIndex(combined.length),
+              });
+            }
+          }
+        }
+
+        setAnimeList(combined);
       } catch (error) {
         console.error('Failed to fetch popular:', error);
       } finally {
@@ -190,13 +176,20 @@ export default function PopulerPage() {
     }
   });
 
-  const topThree = sortedAnime.slice(0, 3);
-  const restAnime = sortedAnime.slice(3);
+  const topFive = sortedAnime.slice(0, 5);
+  const restAnime = sortedAnime.slice(5);
+  
+  // Pagination for the rest
+  const totalPages = Math.ceil(restAnime.length / ITEMS_PER_PAGE);
+  const paginatedRest = restAnime.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#08080d] pt-20 pb-16">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-[#08080d] pt-14 pb-10">
+        <div className="w-full px-3 sm:px-4 lg:px-6">
           <SkeletonLoader />
         </div>
       </div>
@@ -214,174 +207,177 @@ export default function PopulerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#08080d] pt-20 pb-16">
-      <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="mb-8 sm:mb-10">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5 mb-8">
+    <div className="min-h-screen bg-[#08080d] pt-12 sm:pt-14 pb-10">
+      <div className="w-full px-2 sm:px-3 lg:px-4">
+        <div className="mb-4 sm:mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 rounded-xl bg-white/5 border border-white/5">
-                  <span className="text-xl">⭐</span>
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <div className="p-1 rounded-lg bg-white/5 border border-white/5">
+                  <span className="text-xs">⭐</span>
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                <h1 className="text-base sm:text-lg font-bold text-white tracking-tight">
                   Donghua Populer
                 </h1>
               </div>
-              <p className="text-gray-500 text-sm ml-0.5">
-                Donghua paling populer dan favorit penonton minggu ini
+              <p className="text-gray-500 text-[10px] sm:text-xs ml-0.5 truncate max-w-[200px] sm:max-w-none">
+                Paling populer minggu ini
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-lg transition-all duration-300 ${
-                  viewMode === 'grid'
-                    ? 'bg-white/10 text-white'
-                    : 'text-gray-500 hover:text-white'
+                className={`p-1 rounded-lg transition-all duration-300 ${
+                  viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-white'
                 }`}
                 aria-label="Grid view"
               >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z" />
                 </svg>
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-2 rounded-lg transition-all duration-300 ${
-                  viewMode === 'list'
-                    ? 'bg-white/10 text-white'
-                    : 'text-gray-500 hover:text-white'
+                className={`p-1 rounded-lg transition-all duration-300 ${
+                  viewMode === 'list' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-white'
                 }`}
                 aria-label="List view"
               >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z" />
                 </svg>
               </button>
-              <div className="w-px h-5 bg-white/10 mx-1"></div>
+              <div className="w-px h-3 bg-white/10 mx-0.5"></div>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as 'rank' | 'views' | 'rating')}
-                className="px-3 py-2 rounded-lg text-xs bg-white/[0.02] border border-white/5 text-gray-400 focus:outline-none focus:border-white/10 transition-all cursor-pointer appearance-none pr-8"
+                className="px-2 py-1 rounded-lg text-[10px] bg-white/[0.02] border border-white/5 text-gray-400 focus:outline-none focus:border-white/10 transition-all cursor-pointer appearance-none pr-6"
               >
-                <option value="rank" className="bg-gray-900 text-white">Ranking</option>
+                <option value="rank" className="bg-gray-900 text-white">Rank</option>
                 <option value="views" className="bg-gray-900 text-white">Views</option>
                 <option value="rating" className="bg-gray-900 text-white">Rating</option>
               </select>
             </div>
           </div>
 
-          {topThree.length >= 3 && (
-            <div className="grid grid-cols-3 gap-4 sm:gap-5 mb-10">
-              {topThree.map((anime, index) => (
-                <div
+          {/* TOP 5 - Responsive Cards */}
+          {topFive.length >= 5 && (
+            <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5 mb-4 sm:mb-6">
+              {topFive.map((anime, index) => (
+                <a
                   key={anime.slug || index}
-                  className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+                  href={`/anime/${anime.slug}`}
+                  className="relative group cursor-pointer block animate-in fade-in slide-in-from-bottom-4 duration-500"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  <TopThreeCard anime={anime} rank={index + 1} />
-                </div>
+                  <div className="relative overflow-hidden rounded-lg sm:rounded-xl aspect-[2/3] bg-white/[0.02] border border-white/5 transition-all duration-300 group-hover:border-white/20 group-hover:shadow-lg group-hover:shadow-black/30">
+                    <img
+                      src={anime.image}
+                      alt={anime.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      loading={index === 0 ? 'eager' : 'lazy'}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent pointer-events-none" />
+                    <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2">
+                      <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-full sm:rounded-lg flex items-center justify-center text-[8px] sm:text-[11px] font-bold backdrop-blur-md bg-white/15 border border-white/15 text-white shadow-lg">
+                        {index + 1}
+                      </div>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 p-1.5 sm:p-2.5">
+                      <h3 className="text-[9px] sm:text-xs md:text-sm font-medium text-white truncate leading-tight drop-shadow-lg">
+                        {anime.title}
+                      </h3>
+                      <div className="flex items-center gap-1.5 text-[7px] sm:text-[9px] md:text-[10px] mt-0.5 sm:mt-1">
+                        <span className="flex items-center gap-0.5 text-gray-300">
+                          <span className="opacity-60">👁</span>
+                          <span>{anime.views}</span>
+                        </span>
+                        <span className="w-0.5 h-0.5 rounded-full bg-white/30"></span>
+                        <span className="flex items-center gap-0.5 text-gray-300">
+                          <span className="opacity-60">★</span>
+                          <span>{anime.rating}</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </a>
               ))}
             </div>
           )}
+
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[9px] sm:text-xs text-gray-500">{animeList.length} donghua</p>
+            {totalPages > 1 && (
+              <p className="text-[9px] sm:text-xs text-gray-500">
+                Hal {currentPage} / {totalPages}
+              </p>
+            )}
+          </div>
         </div>
 
         {viewMode === 'grid' ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
-            {restAnime.map((anime, index) => (
+          /* GRID VIEW - Responsive */
+          <div className="grid grid-cols-3 max-[400px]:grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 2xl:grid-cols-10 gap-1.5 sm:gap-2.5">
+            {paginatedRest.map((anime, index) => (
               <div
                 key={anime.slug || index}
                 className="animate-in fade-in slide-in-from-bottom-4 duration-500"
-                style={{ animationDelay: `${Math.min(index * 30, 400)}ms` }}
+                style={{ animationDelay: `${Math.min(index * 10, 200)}ms` }}
               >
                 <AnimeCard
                   anime={toAnimeSearchResult(anime)}
                   rank={anime.rank}
                   priority={index < 10}
+                  size="small"
                 />
-                <div className="mt-2 flex items-center justify-between px-0.5">
-                  <span className="text-[11px] text-gray-500 flex items-center gap-1">
+                <div className="mt-1 sm:mt-1.5 flex items-center justify-between px-0.5">
+                  <span className="text-[7px] sm:text-[8px] md:text-[9px] text-gray-500 flex items-center gap-0.5">
                     <span className="opacity-60">👁</span>
                     <span>{anime.views}</span>
                   </span>
-                  <span className="text-[11px] text-gray-500 flex items-center gap-1">
+                  <span className="text-[7px] sm:text-[8px] md:text-[9px] text-gray-500 flex items-center gap-0.5">
                     <span className="opacity-60">★</span>
                     <span>{anime.rating}</span>
                   </span>
                 </div>
-                {anime.genre && (
-                  <div className="flex flex-wrap gap-1 mt-1.5 px-0.5">
-                    {anime.genre.slice(0, 2).map((genre) => (
-                      <span
-                        key={genre}
-                        className="text-[10px] px-1.5 py-0.5 rounded-full text-gray-500 bg-white/[0.02] border border-white/5"
-                      >
-                        {genre}
-                      </span>
-                    ))}
-                    {anime.genre.length > 2 && (
-                      <span className="text-[10px] text-gray-600">+{anime.genre.length - 2}</span>
-                    )}
-                  </div>
-                )}
               </div>
             ))}
           </div>
         ) : (
-          <div className="space-y-2">
-            {restAnime.map((anime, index) => (
+          /* LIST VIEW - Ultra compact */
+          <div className="space-y-1">
+            {paginatedRest.map((anime, index) => (
               <a
                 key={anime.slug || index}
                 href={`/anime/${anime.slug}`}
-                className="flex gap-4 p-4 rounded-xl bg-white/[0.01] border border-white/5 items-center group cursor-pointer transition-all duration-300 hover:bg-white/[0.03] hover:border-white/10 animate-in fade-in slide-in-from-right-4 duration-500"
-                style={{ animationDelay: `${Math.min(index * 30, 400)}ms` }}
+                className="flex gap-2 p-1.5 rounded-lg bg-white/[0.01] border border-white/5 items-center group cursor-pointer transition-all duration-300 hover:bg-white/[0.03] hover:border-white/10 animate-in fade-in slide-in-from-right-4 duration-500"
+                style={{ animationDelay: `${Math.min(index * 10, 200)}ms` }}
               >
-                <div className="flex-shrink-0 w-8 sm:w-10 text-center">
-                  <span className="text-sm font-bold text-gray-500">
+                <div className="flex-shrink-0 w-4 text-center">
+                  <span className="text-[9px] font-bold text-gray-500">
                     {anime.rank}
                   </span>
                 </div>
 
-                <div className="w-12 sm:w-14 aspect-[2/3] rounded-lg overflow-hidden flex-shrink-0 bg-white/5">
+                <div className="w-7 aspect-[2/3] rounded overflow-hidden flex-shrink-0 bg-white/5">
                   <img
                     src={anime.image}
                     alt={anime.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="w-full h-full object-cover"
                     loading="lazy"
                   />
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-medium text-white truncate mb-1.5 group-hover:text-gray-300 transition-colors duration-200">
+                  <h3 className="text-[9px] font-medium text-white truncate group-hover:text-gray-300 transition-colors duration-200">
                     {anime.title}
                   </h3>
-                  {anime.genre && (
-                    <div className="flex flex-wrap gap-1">
-                      {anime.genre.slice(0, 3).map((genre) => (
-                        <span
-                          key={genre}
-                          className="text-[10px] px-1.5 py-0.5 rounded-full text-gray-500 bg-white/[0.02] border border-white/5"
-                        >
-                          {genre}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
-                <div className="flex-shrink-0 flex items-center gap-4 sm:gap-6">
-                  <div className="text-right">
-                    <div className="flex items-center gap-1 text-[11px] text-gray-500">
-                      <span className="opacity-60">👁</span>
-                      <span>{anime.views}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-[11px] text-gray-500">
-                      <span className="opacity-60">★</span>
-                      <span>{anime.rating}</span>
-                    </div>
-                  </div>
-                  <span className="text-gray-600 group-hover:text-gray-400 group-hover:translate-x-1 transition-all duration-300">
+                <div className="flex-shrink-0 flex items-center gap-1">
+                  <span className="text-[7px] text-gray-500">{anime.views}</span>
+                  <span className="text-gray-600 group-hover:text-gray-400 transition-all duration-300 text-[8px]">
                     →
                   </span>
                 </div>
@@ -390,23 +386,71 @@ export default function PopulerPage() {
           </div>
         )}
 
-        {topThree.length >= 3 && (
-          <div className="mt-12 sm:mt-16 p-6 rounded-2xl bg-white/[0.01] border border-white/5">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="p-2 rounded-xl bg-white/5 border border-white/5">
-                <span className="text-lg">📊</span>
-              </div>
-              <h3 className="text-sm font-medium text-white">Statistik Popularitas</h3>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-6 sm:mt-8">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-medium transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/5"
+            >
+              ← Sebelumnya
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                let pageNum: number;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-[10px] sm:text-xs font-medium transition-all duration-300 ${
+                      currentPage === pageNum
+                        ? 'bg-white text-black'
+                        : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              <StatCard value={`${animeList.length}+`} label="Total Donghua" />
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-medium transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/5"
+            >
+              Selanjutnya →
+            </button>
+          </div>
+        )}
+
+        {/* Stats section - Responsive */}
+        {topFive.length >= 5 && (
+          <div className="mt-6 sm:mt-8 p-3 sm:p-5 rounded-xl sm:rounded-2xl bg-white/[0.01] border border-white/5">
+            <div className="flex items-center gap-1.5 mb-3">
+              <div className="p-1.5 rounded-lg bg-white/5 border border-white/5">
+                <span className="text-xs sm:text-sm">📊</span>
+              </div>
+              <h3 className="text-[11px] sm:text-sm font-medium text-white">Statistik</h3>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-3">
+              <StatCard value={`${animeList.length}+`} label="Total" />
               <StatCard
                 value={`${animeList.reduce((sum, a) => sum + parseFloat((a.views || '0').replace('M', '')), 0).toFixed(1)}M`}
-                label="Total Views"
+                label="Views"
               />
               <StatCard
                 value={animeList.length > 0 ? (animeList.reduce((sum, a) => sum + (a.rating || 0), 0) / animeList.length).toFixed(1) : '0'}
-                label="Rata-rata Rating"
+                label="Rating"
               />
               <StatCard value="🔥" label="Trending" />
             </div>

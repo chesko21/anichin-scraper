@@ -101,8 +101,18 @@ function AnimeInfo({ anime }: { anime: ScheduleAnime }) {
 export default function SchedulePage() {
   const [schedule, setSchedule] = useState<ScheduleResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeDay, setActiveDay] = useState('all');
   const today = getToday();
+  const [activeDay, setActiveDay] = useState(today);
+  const [prevDay, setPrevDay] = useState(today);
+  
+  // Reset ke hari ini jika komponen mount ulang
+  useEffect(() => {
+    const currentToday = getToday();
+    if (currentToday !== prevDay) {
+      setActiveDay(currentToday);
+      setPrevDay(currentToday);
+    }
+  }, [prevDay]);
 
   useEffect(() => {
     const fetchSchedule = async () => {
