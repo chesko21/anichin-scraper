@@ -54,8 +54,8 @@ jobs:
 
       - name: Commit & push scraped data
         run: |
-          git config --global user.name 'Auto Scraper Bot'
-          git config --global user.email 'bot@anichin-scraper.vercel.app'
+          git config --global user.name 'chesko21'
+          git config --global user.email 'afiqmaarif2211@gmail.com'
           git add public/data/
           
           # Only commit if there are changes
