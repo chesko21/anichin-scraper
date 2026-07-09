@@ -1,7 +1,10 @@
 // lib/anichin.ts
 // Uses @zhadev/anichin library for reliable scraping
+// For Vercel: reads from pre-scraped static JSON files
 
 import AnichinScraper from '@zhadev/anichin';
+import fs from 'fs';
+import path from 'path';
 
 const BASE_URL = 'https://anichin.cafe';
 
@@ -100,7 +103,7 @@ interface CacheItem<T> {
 
 class Cache {
   private cache: Map<string, CacheItem<any>> = new Map();
-  private defaultTTL: number = 5 * 60 * 1000; // 5 menit
+  private defaultTTL: number = 5 * 60 * 1000;
 
   set<T>(key: string, data: T, ttl: number = this.defaultTTL): void {
     if (this.cache.size > 200) {
@@ -133,6 +136,26 @@ class Cache {
 
 const apiCache = new Cache();
 
+// ==================== READ SERIES DETAILS CACHE ====================
+let _seriesCache: Record<string, SeriesDetail> | null = null;
+
+function loadSeriesCache(): Record<string, SeriesDetail> {
+  if (_seriesCache) return _seriesCache;
+  try {
+    const filePath = path.join(process.cwd(), 'public', 'data', 'series-details.json');
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      _seriesCache = JSON.parse(raw);
+      console.log(`[Cache] Loaded series cache: ${Object.keys(_seriesCache!).length} items`);
+      return _seriesCache!;
+    }
+  } catch (e) {
+    console.warn('[Cache] Failed to load series cache:', e);
+  }
+  _seriesCache = {};
+  return _seriesCache;
+}
+
 // ==================== SEARCH ANIME ====================
 export async function searchAnime(query: string): Promise<SearchResult[]> {
   const cacheKey = `search_${query.toLowerCase().trim()}`;
@@ -140,25 +163,52 @@ export async function searchAnime(query: string): Promise<SearchResult[]> {
   if (cached) return cached;
 
   try {
-    const scraper = getScraper();
-    const result = await scraper.search(query);
-    
-    if (!result.success || !result.data?.search?.items) {
-      return [];
+    // First search from static data
+    const filePath = path.join(process.cwd(), 'public', 'data', 'all.json');
+    let results: SearchResult[] = [];
+
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      const json = JSON.parse(raw);
+      const allItems = json.items || [];
+      const q = query.toLowerCase().trim();
+      results = allItems.filter((item: any) =>
+        item.title.toLowerCase().includes(q)
+      ).slice(0, 24).map((item: any) => ({
+        title: item.title,
+        slug: item.slug,
+        image: item.image,
+        latestEpisode: item.episode || 'N/A',
+      }));
     }
 
-    const items = result.data.search.items;
-    const results: SearchResult[] = items.map((item: any) => ({
-      title: item.title || 'Unknown',
-      slug: item.slug || '',
-      image: item.thumbnail || '',
-      latestEpisode: item.episode || 'N/A',
-    }));
+    // If not enough results, try live search
+    if (results.length < 3) {
+      try {
+        const scraper = getScraper();
+        const result = await scraper.search(query);
+        if (result.success && result.data?.search?.items) {
+          const existingSlugs = new Set(results.map((r: any) => r.slug));
+          for (const item of result.data.search.items) {
+            if (!existingSlugs.has(item.slug)) {
+              results.push({
+                title: item.title || 'Unknown',
+                slug: item.slug || '',
+                image: item.thumbnail || '',
+                latestEpisode: item.episode || 'N/A',
+              });
+              existingSlugs.add(item.slug);
+            }
+          }
+        }
+      } catch (e) {
+        // Live search failed, use static results only
+      }
+    }
 
     console.log(`[searchAnime] Found ${results.length} results for "${query}"`);
-    const final = results.slice(0, 24);
-    apiCache.set(cacheKey, final, 3 * 60 * 1000);
-    return final;
+    apiCache.set(cacheKey, results, 3 * 60 * 1000);
+    return results;
   } catch (error) {
     console.error('[searchAnime] Error:', error);
     return [];
@@ -171,31 +221,61 @@ export async function getSeriesDetail(slug: string): Promise<SeriesDetail | null
   const cached = apiCache.get<SeriesDetail>(cacheKey);
   if (cached) return cached;
 
+  // First: try reading from pre-scraped cache file
+  try {
+    const seriesCache = loadSeriesCache();
+    const cachedDetail = seriesCache[slug];
+    if (cachedDetail) {
+      console.log(`[getSeriesDetail] Cache hit for: ${slug}`);
+      apiCache.set(cacheKey, cachedDetail, 30 * 60 * 1000);
+      return cachedDetail;
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  // Fallback: try building detail from all.json (basic info only)
+  try {
+    const filePath = path.join(process.cwd(), 'public', 'data', 'all.json');
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      const json = JSON.parse(raw);
+      const item = (json.items || []).find((i: any) => i.slug === slug);
+      if (item) {
+        const basicDetail: SeriesDetail = {
+          title: item.title || slug.replace(/-/g, ' '),
+          image: item.image || '',
+          synopsis: 'Synopsis tidak tersedia',
+          status: item.status || 'Ongoing',
+          genre: item.genre || [],
+          rating: item.rating || undefined,
+          totalEpisodes: 0,
+          episodes: [],
+        };
+        console.log(`[getSeriesDetail] Using basic info from all.json for: ${slug}`);
+        apiCache.set(cacheKey, basicDetail, 60 * 60 * 1000);
+        return basicDetail;
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  // Last resort: try live scraping from anichin.cafe
   try {
     const scraper = getScraper();
     const result = await scraper.series(slug);
-    
+
     if (!result.success || !result.data?.detail) {
       console.log(`[getSeriesDetail] Not found: ${slug}`);
       return null;
     }
 
     const detail = result.data.detail;
-    
-    console.log(`[getSeriesDetail] Raw detail keys:`, Object.keys(detail).join(', '));
-    console.log(`[getSeriesDetail] Cover:`, detail.cover?.thumbnail?.substring(0, 80));
-    console.log(`[getSeriesDetail] Episodes count:`, detail.episodes?.length);
-
-    // Extract image from cover object
     const image = detail.cover?.thumbnail || detail.cover?.banner || '';
-
-    // Extract synopsis
     const synopsis = detail.synopsis || 'Synopsis tidak tersedia';
-
-    // Extract status from information
     const status = detail.information?.status || 'Ongoing';
 
-    // Map genres (genres is an array of {name, slug, url})
     const genres: string[] = [];
     if (detail.genres && Array.isArray(detail.genres)) {
       detail.genres.forEach((g: any) => {
@@ -204,17 +284,12 @@ export async function getSeriesDetail(slug: string): Promise<SeriesDetail | null
       });
     }
 
-    // Extract rating as string
     let ratingStr: string | undefined;
     if (detail.rating && typeof detail.rating === 'object') {
-      if (detail.rating.text) {
-        ratingStr = detail.rating.text;
-      } else if (detail.rating.percentage > 0) {
-        ratingStr = `${detail.rating.percentage}%`;
-      }
+      if (detail.rating.text) ratingStr = detail.rating.text;
+      else if (detail.rating.percentage > 0) ratingStr = `${detail.rating.percentage}%`;
     }
 
-    // Map episodes
     const episodes: SeriesDetail['episodes'] = [];
     if (detail.episodes && Array.isArray(detail.episodes)) {
       detail.episodes.forEach((ep: any, index: number) => {
@@ -231,8 +306,6 @@ export async function getSeriesDetail(slug: string): Promise<SeriesDetail | null
         });
       });
     }
-
-    // Reversed so newest first
     episodes.reverse();
 
     const seriesDetail: SeriesDetail = {
@@ -246,12 +319,21 @@ export async function getSeriesDetail(slug: string): Promise<SeriesDetail | null
       episodes,
     };
 
-    console.log(`[getSeriesDetail] Success: ${seriesDetail.title} - ${episodes.length} eps`);
+    console.log(`[getSeriesDetail] Live scrape success: ${seriesDetail.title} - ${episodes.length} eps`);
     apiCache.set(cacheKey, seriesDetail, 5 * 60 * 1000);
     return seriesDetail;
   } catch (error) {
-    console.error('[getSeriesDetail] Error:', error);
-    return null;
+    console.error('[getSeriesDetail] Live scrape error:', error);
+    // Return basic info as final fallback
+    return {
+      title: slug.replace(/-/g, ' '),
+      image: '',
+      synopsis: 'Synopsis tidak tersedia',
+      status: 'Ongoing',
+      genre: [],
+      totalEpisodes: 0,
+      episodes: [],
+    };
   }
 }
 
@@ -262,29 +344,23 @@ export async function getWatchVideo(episodeUrl: string): Promise<VideoSource[]> 
   if (cached) return cached;
 
   try {
-    // Extract slug and episode number from URL
-    const urlObj = new URL(episodeUrl);
-    const pathParts = urlObj.pathname.split('/').filter(Boolean);
-    
-    // Try to find slug and episode from the path
-    // Pattern: /slug-episode-123-subtitle-indonesia/
     const episodeMatch = episodeUrl.match(/(.+?)-episode-(\d+)/i);
     let slug = '';
     let episodeNum = 1;
-    
+
     if (episodeMatch) {
       slug = episodeMatch[1];
       episodeNum = parseInt(episodeMatch[2]);
     } else {
-      // Fallback: use the path as slug
-      slug = pathParts[0] || '';
+      const urlObj = new URL(episodeUrl);
+      slug = urlObj.pathname.split('/').filter(Boolean)[0] || '';
     }
 
     if (!slug) return [];
 
     const scraper = getScraper();
     const result = await scraper.watch(slug, episodeNum);
-    
+
     if (!result.success || !result.data?.watch?.servers) {
       return [];
     }
@@ -318,7 +394,7 @@ export async function getSchedule(): Promise<ScheduleResponse> {
   try {
     const scraper = getScraper();
     const result = await scraper.schedule();
-    
+
     if (!result.success || !result.data?.schedule) {
       return emptySchedule;
     }
@@ -329,7 +405,7 @@ export async function getSchedule(): Promise<ScheduleResponse> {
     for (const day of dayKeys) {
       const dayData = schedule[day];
       const items: ScheduleItem[] = [];
-      
+
       if (dayData?.list && Array.isArray(dayData.list)) {
         dayData.list.forEach((item: any) => {
           items.push({
@@ -356,10 +432,6 @@ export async function getSchedule(): Promise<ScheduleResponse> {
 }
 
 // ==================== GET ALL DONGHUA (from static JSON) ====================
-// Note: This reads from the static JSON file generated by scrape-data.ts
-import fs from 'fs';
-import path from 'path';
-
 export async function getAllDonghua(page: number = 1, limit: number = 60): Promise<PaginatedResponse<DonghuaItem>> {
   const cacheKey = `all_donghua_p${page}_l${limit}`;
   const cached = apiCache.get<PaginatedResponse<DonghuaItem>>(cacheKey);
@@ -367,7 +439,7 @@ export async function getAllDonghua(page: number = 1, limit: number = 60): Promi
 
   try {
     const filePath = path.join(process.cwd(), 'public', 'data', 'all.json');
-    
+
     if (!fs.existsSync(filePath)) {
       return { items: [], total: 0, hasMore: false, currentPage: page };
     }
@@ -405,7 +477,7 @@ export async function getTrendingDonghua(limit: number = 15): Promise<DonghuaIte
 
   try {
     const filePath = path.join(process.cwd(), 'public', 'data', 'trending.json');
-    
+
     if (!fs.existsSync(filePath)) {
       return [];
     }
@@ -413,7 +485,7 @@ export async function getTrendingDonghua(limit: number = 15): Promise<DonghuaIte
     const raw = fs.readFileSync(filePath, 'utf-8');
     const json = JSON.parse(raw);
     const items: DonghuaItem[] = json.items || [];
-    
+
     const result = items.slice(0, limit);
     apiCache.set(cacheKey, result, 5 * 60 * 1000);
     return result;
@@ -431,7 +503,7 @@ export async function getRecommendations(limit: number = 15): Promise<DonghuaIte
 
   try {
     const filePath = path.join(process.cwd(), 'public', 'data', 'recommendations.json');
-    
+
     if (!fs.existsSync(filePath)) {
       return [];
     }
@@ -439,7 +511,7 @@ export async function getRecommendations(limit: number = 15): Promise<DonghuaIte
     const raw = fs.readFileSync(filePath, 'utf-8');
     const json = JSON.parse(raw);
     const items: DonghuaItem[] = json.items || [];
-    
+
     const result = items.slice(0, limit);
     apiCache.set(cacheKey, result, 10 * 60 * 1000);
     return result;

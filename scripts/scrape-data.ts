@@ -233,6 +233,90 @@ async function scrapeSchedule(scraper: AnichinScraper): Promise<any> {
   return emptySchedule;
 }
 
+// ==================== SCRAPE ALL SERIES DETAILS ====================
+async function scrapeAllSeriesDetails(scraper: AnichinScraper, allDonghua: any[]): Promise<Record<string, any>> {
+  console.log('\n=== Scraping All Series Details ===');
+  const details: Record<string, any> = {};
+  const slugs = allDonghua.map(i => i.slug).filter(Boolean);
+  console.log(`Total series to scrape: ${slugs.length}`);
+
+  // Process in batches to avoid rate limiting
+  const BATCH_SIZE = 5;
+  const BATCH_DELAY = 3000;
+
+  for (let i = 0; i < slugs.length; i += BATCH_SIZE) {
+    const batch = slugs.slice(i, i + BATCH_SIZE);
+    console.log(`Batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(slugs.length / BATCH_SIZE)} (${i + 1}-${Math.min(i + BATCH_SIZE, slugs.length)} of ${slugs.length})`);
+
+    await Promise.all(batch.map(async (slug, batchIdx) => {
+      try {
+        // Add small delay between items in same batch
+        await delay(batchIdx * 500);
+        const result = await scraper.series(slug);
+        if (result.success && result.data?.detail) {
+          const d = result.data.detail;
+          const detail: any = {
+            title: d.title || slug,
+            image: d.cover?.thumbnail || d.cover?.banner || '',
+            synopsis: d.synopsis || 'Synopsis tidak tersedia',
+            status: d.information?.status || 'Ongoing',
+            genre: [],
+            rating: undefined,
+            totalEpisodes: 0,
+            episodes: [],
+          };
+
+          // Extract genres
+          if (d.genres && Array.isArray(d.genres)) {
+            d.genres.forEach((g: any) => {
+              if (typeof g === 'string') detail.genre.push(g);
+              else if (g.name) detail.genre.push(g.name);
+            });
+          }
+
+          // Extract rating
+          if (d.rating && typeof d.rating === 'object') {
+            if (d.rating.text) detail.rating = d.rating.text;
+            else if (d.rating.percentage > 0) detail.rating = `${d.rating.percentage}%`;
+          }
+
+          // Extract episodes
+          if (d.episodes && Array.isArray(d.episodes)) {
+            d.episodes.forEach((ep: any, idx: number) => {
+              const epNum = ep.episode_number || ep.episode || String(idx + 1);
+              const epTitle = ep.title || `Episode ${epNum}`;
+              const epSlug = ep.slug || '';
+              const epUrl = ep.url || '';
+              detail.episodes.push({
+                id: idx + 1,
+                title: epTitle,
+                slug: epSlug,
+                episodeNumber: typeof epNum === 'string' ? epNum : String(epNum),
+                url: epUrl.startsWith('http') ? epUrl : `https://anichin.cafe${epUrl}`,
+              });
+            });
+            detail.episodes.reverse();
+            detail.totalEpisodes = detail.episodes.length;
+          }
+
+          details[slug] = detail;
+        } else {
+          console.log(`  [SKIP] ${slug}: no data`);
+        }
+      } catch (e: any) {
+        console.log(`  [ERROR] ${slug}: ${e.message?.substring(0, 80)}`);
+      }
+    }));
+
+    if (i + BATCH_SIZE < slugs.length) {
+      await delay(BATCH_DELAY);
+    }
+  }
+
+  console.log(`\nScraped series details: ${Object.keys(details).length}/${slugs.length}`);
+  return details;
+}
+
 // ==================== MAIN ====================
 async function main() {
   console.log('=== Build-Time Scraper (using @zhadev/anichin) ===');
@@ -271,6 +355,9 @@ async function main() {
   const trending = await scrapeTrending(scraper, allDonghua);
   const schedule = await scrapeSchedule(scraper);
 
+  // Scrape all series details (for faster Vercel loading)
+  const seriesDetails = await scrapeAllSeriesDetails(scraper, allDonghua);
+
   // Recommendations: shuffled subset
   const recommendations = [...allDonghua]
     .sort(() => Math.random() - 0.5)
@@ -305,6 +392,13 @@ async function main() {
     JSON.stringify({ ...schedule, updatedAt: timestamp }, null, 2)
   );
   console.log(`Saved schedule.json`);
+
+  // Save series-details.json
+  fs.writeFileSync(
+    path.join(DATA_DIR, 'series-details.json'),
+    JSON.stringify(seriesDetails, null, 2)
+  );
+  console.log(`Saved series-details.json: ${Object.keys(seriesDetails).length} items`);
 
   // Save meta.json
   fs.writeFileSync(
