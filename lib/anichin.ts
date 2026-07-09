@@ -182,13 +182,36 @@ export async function getSeriesDetail(slug: string): Promise<SeriesDetail | null
 
     const detail = result.data.detail;
     
-    // Map genres
+    console.log(`[getSeriesDetail] Raw detail keys:`, Object.keys(detail).join(', '));
+    console.log(`[getSeriesDetail] Cover:`, detail.cover?.thumbnail?.substring(0, 80));
+    console.log(`[getSeriesDetail] Episodes count:`, detail.episodes?.length);
+
+    // Extract image from cover object
+    const image = detail.cover?.thumbnail || detail.cover?.banner || '';
+
+    // Extract synopsis
+    const synopsis = detail.synopsis || 'Synopsis tidak tersedia';
+
+    // Extract status from information
+    const status = detail.information?.status || 'Ongoing';
+
+    // Map genres (genres is an array of {name, slug, url})
     const genres: string[] = [];
     if (detail.genres && Array.isArray(detail.genres)) {
       detail.genres.forEach((g: any) => {
         if (typeof g === 'string') genres.push(g);
         else if (g.name) genres.push(g.name);
       });
+    }
+
+    // Extract rating as string
+    let ratingStr: string | undefined;
+    if (detail.rating && typeof detail.rating === 'object') {
+      if (detail.rating.text) {
+        ratingStr = detail.rating.text;
+      } else if (detail.rating.percentage > 0) {
+        ratingStr = `${detail.rating.percentage}%`;
+      }
     }
 
     // Map episodes
@@ -214,11 +237,11 @@ export async function getSeriesDetail(slug: string): Promise<SeriesDetail | null
 
     const seriesDetail: SeriesDetail = {
       title: detail.title || slug.replace(/-/g, ' '),
-      image: detail.thumbnail || detail.poster || '',
-      synopsis: detail.synopsis || detail.description || 'Synopsis tidak tersedia',
-      status: detail.status || 'Ongoing',
+      image,
+      synopsis,
+      status,
       genre: genres,
-      rating: detail.rating || undefined,
+      rating: ratingStr,
       totalEpisodes: episodes.length,
       episodes,
     };
