@@ -1,6 +1,4 @@
-<<<<<<< HEAD
-{}
-=======
+
 {
   "blades-of-the-guardians-2": {
     "title": "BLADES OF THE GUARDIANS 2",
@@ -103908,4 +103906,3 @@
     ]
   }
 }
->>>>>>> cf4ff02 (feat: add pre-scraped series-details.json (504 items) for instant Vercel loading)

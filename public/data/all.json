@@ -1,9 +1,5 @@
 {
-<<<<<<< HEAD
-  "items": [],
-  "total": 0,
-  "updatedAt": "2026-07-09T14:50:38.952Z"
-=======
+
   "items": [
     {
       "title": "Crowned In A Hundred Days",
@@ -3536,5 +3532,5 @@
   ],
   "total": 504,
   "updatedAt": "2026-07-09T14:54:42.729Z"
->>>>>>> cf4ff02 (feat: add pre-scraped series-details.json (504 items) for instant Vercel loading)
+
 }
