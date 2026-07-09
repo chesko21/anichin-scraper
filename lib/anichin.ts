@@ -344,7 +344,9 @@ export async function getWatchVideo(episodeUrl: string): Promise<VideoSource[]> 
   if (cached) return cached;
 
   try {
-    const episodeMatch = episodeUrl.match(/(.+?)-episode-(\d+)/i);
+    // Extract slug and episode number from URL like:
+    // https://anichin.cafe/renegade-immortal-episode-01-subtitle-indonesia/
+    const episodeMatch = episodeUrl.match(/\/\/[^\/]+\/([^-]+(?:-[^-]+)*)-episode-(\d+)/i);
     let slug = '';
     let episodeNum = 1;
 
@@ -352,8 +354,21 @@ export async function getWatchVideo(episodeUrl: string): Promise<VideoSource[]> 
       slug = episodeMatch[1];
       episodeNum = parseInt(episodeMatch[2]);
     } else {
-      const urlObj = new URL(episodeUrl);
-      slug = urlObj.pathname.split('/').filter(Boolean)[0] || '';
+      // Fallback: try to extract slug from URL path
+      try {
+        const urlObj = new URL(episodeUrl);
+        const pathParts = urlObj.pathname.split('/').filter(Boolean);
+        if (pathParts.length > 0) {
+          // Extract slug from path like "renegade-immortal-episode-01-subtitle-indonesia"
+          const firstPart = pathParts[0];
+          const slugMatch = firstPart.match(/^([^-]+(?:-[^-]+)*)-episode-\d+/i);
+          slug = slugMatch ? slugMatch[1] : firstPart;
+        }
+      } catch (e) {
+        // Invalid URL, try to extract slug from the string directly
+        const slugMatch = episodeUrl.match(/([^-]+(?:-[^-]+)*)-episode-\d+/i);
+        if (slugMatch) slug = slugMatch[1];
+      }
     }
 
     if (!slug) return [];
